@@ -115,7 +115,7 @@ public class NativeMediaPlayerActivity extends AppCompatActivity implements Surf
         Log.d(TAG, "surfaceCreated() called with: surfaceHolder = [" + surfaceHolder + "]");
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
-        mMediaPlayer.init(mVideoPath, VIDEO_RENDER_ANWINDOW, surfaceHolder.getSurface());
+        mMediaPlayer.init(/*mVideoPath*/"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4", VIDEO_RENDER_ANWINDOW, surfaceHolder.getSurface());
     }
 
     @Override
