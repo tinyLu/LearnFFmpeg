@@ -10,6 +10,7 @@
 #include <FFMediaPlayer.h>
 #include "VideoDecoder.h"
 #include <android/bitmap.h>
+#include "libyuv.h"
 
 void VideoDecoder::OnDecoderReady() {
     LOGCATE("VideoDecoder::OnDecoderReady");
@@ -114,55 +115,36 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
             AndroidBitmap_getInfo(env, bitMap, &dstBitmapInfo);
             LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
 
-            sws_scale(m_SwsContext, frame->data, frame->linesize, 0,
-                      m_VideoHeight, m_RGBAFrame->data, m_RGBAFrame->linesize);
+
+            //sws_scale(m_SwsContext, frame->data, frame->linesize, 0, m_VideoHeight, m_RGBAFrame->data, m_RGBAFrame->linesize);
 
             AndroidBitmap_lockPixels(env, bitMap, &dstPixels);
 
             LOGCATE("VideoDecoder::OnFrameAvailable ccc");
-            memcpy((uint8_t *)dstPixels, m_RGBAFrame->data, m_RenderWidth * m_RenderHeight * 4);
+
+            libyuv::I420ToABGR(frame->data[0], frame->linesize[0],
+                               frame->data[1], frame->linesize[1],
+                               frame->data[2], frame->linesize[2],
+                               (uint8_t *)dstPixels, frame->width * 4,
+                               frame->width, frame->height
+                               );
+
+            //memcpy((uint8_t *)dstPixels, m_RGBAFrame->data, m_RenderWidth * m_RenderHeight * 4);
+
             LOGCATE("VideoDecoder::OnFrameAvailable ddd");
 
             AndroidBitmap_unlockPixels(env, bitMap);
 
-            pthread_mutex_lock(&callback_mutex);
+            //pthread_mutex_lock(&callback_mutex);
+
             if(m_MsgContext && m_MsgCallback)
                 m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, bitMap);
-            pthread_mutex_unlock(&callback_mutex);
 
-            /*pthread_mutex_lock(&callback_mutex);
-            LOGCATE("VideoDecoder::OnFrameAvailable aaa");
-            void *dstPixels = 0;
-            AndroidBitmapInfo dstBitmapInfo;
-            AndroidBitmap_getInfo(env, player->bitMap, &dstBitmapInfo);
-            LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
-
-            pthread_mutex_unlock(&callback_mutex);*/
-
-            /*bool isAttach = false;
-
-            try {
-                JNIEnv *env = player->GetJNIEnv(&isAttach);
-                if (nullptr != env) {
-                    AndroidBitmap_getInfo(env, player->bitMap, &dstBitmapInfo);
-
-                    //AndroidBitmap_lockPixels(env, player->bitMap, &dstPixels);
-                    uint32_t dstHeight = dstBitmapInfo.height;
-                    uint32_t dstWidth = dstBitmapInfo.width;
-
-                    LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstWidth, dstHeight);
-                    //AndroidBitmap_unlockPixels(env, player->bitMap);
-                } else {
-                    LOGCATE("VideoDecoder::OnFrameAvailable env is null!!");
-                }
-
-            } catch (...) {
-                LOGCATE("VideoDecoder::OnFrameAvailable unknown error!!");
-            }*/
+            //pthread_mutex_unlock(&callback_mutex);
 
         }
 
-        //return;
+        return;
 
         if(m_VideoRender->GetRenderType() == VIDEO_RENDER_ANWINDOW)
         {

@@ -34,6 +34,7 @@ file(GLOB src-files
         ${CMAKE_SOURCE_DIR}/recorder/MediaRecorderContext.cpp
         ${CMAKE_SOURCE_DIR}/recorder/GLCameraRender.cpp
         ${CMAKE_SOURCE_DIR}/recorder/MediaRecorder.cpp
+        ${CMAKE_SOURCE_DIR}/source/*.cc
         )
 
 add_library( # Sets the name of the library.

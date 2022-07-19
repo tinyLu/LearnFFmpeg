@@ -30,13 +30,13 @@ class VideoDecoder : public DecoderBase {
 
 public:
     VideoDecoder(char *url){
-        pthread_mutex_init(&callback_mutex, NULL);
+        //pthread_mutex_init(&callback_mutex, NULL);
         Init(url, AVMEDIA_TYPE_VIDEO);
     }
 
     virtual ~VideoDecoder(){
         UnInit();
-        pthread_mutex_destroy(&callback_mutex);
+        //pthread_mutex_destroy(&callback_mutex);
     }
 
     int GetVideoWidth()
@@ -56,7 +56,7 @@ public:
     jobject bitMap = nullptr;
 
 private:
-    pthread_mutex_t callback_mutex;
+    //pthread_mutex_t callback_mutex;
 
     virtual void OnDecoderReady();
     virtual void OnDecoderDone();
