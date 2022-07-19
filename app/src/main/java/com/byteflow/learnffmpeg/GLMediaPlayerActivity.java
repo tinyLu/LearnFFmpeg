@@ -48,6 +48,7 @@ import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODING_BITMAP;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODING_TIME;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_REQUEST_RENDER;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.VIDEO_GL_RENDER;
+import static com.byteflow.learnffmpeg.media.FFMediaPlayer.VIDEO_RENDER_ANWINDOW;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.VIDEO_RENDER_OPENGL;
 
 public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfaceView.Renderer, FFMediaPlayer.EventCallback, MyGLSurfaceView.OnGestureCallback{
@@ -135,7 +136,9 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         });
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
+
         mMediaPlayer.init(/*mVideoPath*/"rtmp://10.180.90.38:1935/live/aaa", VIDEO_RENDER_OPENGL, null);
+        //mMediaPlayer.init(/*mVideoPath*/"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4", VIDEO_RENDER_OPENGL, null);
 
         if (videoSenderManager.prepareVideo()) {
             videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");

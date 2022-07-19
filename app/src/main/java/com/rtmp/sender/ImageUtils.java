@@ -1,9 +1,10 @@
 package com.rtmp.sender;
 
 import android.graphics.Bitmap;
+import android.util.Log;
 
 public class ImageUtils {
-
+    private static final String TAG = "ImageUtils";
     /**
      * Bitmap转化为ARGB数据，再转化为NV21数据
      *
@@ -16,7 +17,10 @@ public class ImageUtils {
         if (src != null && src.getWidth() >= width && src.getHeight() >= height) {
             int[] argb = new int[width * height];
             src.getPixels(argb, 0, width, 0, 0, width, height);
-            return argbToNv21(argb, width, height);
+
+            byte[] bytes = argbToNv21(argb, width, height);
+            Log.d(TAG, "bitmapToNv21 size:" + bytes.length);
+            return bytes;
         } else {
             return null;
         }
