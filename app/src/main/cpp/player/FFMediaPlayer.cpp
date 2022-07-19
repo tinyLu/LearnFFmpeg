@@ -19,9 +19,7 @@ void FFMediaPlayer::Init(JNIEnv *jniEnv, jobject obj, char *url, int videoRender
     m_JavaObj = jniEnv->NewGlobalRef(obj);
 
     m_VideoDecoder = new VideoDecoder(url);
-    m_AudioDecoder = new AudioDecoder(url);
 
-    //CreateBitmap(jniEnv, 240, 160);
 
     if(videoRenderType == VIDEO_RENDER_OPENGL) {
         m_VideoDecoder->SetVideoRender(VideoGLRender::GetInstance());
@@ -32,8 +30,10 @@ void FFMediaPlayer::Init(JNIEnv *jniEnv, jobject obj, char *url, int videoRender
         m_VideoDecoder->SetVideoRender(VRGLRender::GetInstance());
     }
 
+    m_AudioDecoder = new AudioDecoder(url);
     m_AudioRender = new OpenSLRender();
-    m_AudioDecoder->SetAudioRender(m_AudioRender);
+
+    //m_AudioDecoder->SetAudioRender(m_AudioRender);
 
     m_VideoDecoder->SetMessageCallback(this, PostMessage);
     m_AudioDecoder->SetMessageCallback(this, PostMessage);
