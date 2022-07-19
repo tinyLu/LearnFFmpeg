@@ -92,7 +92,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         });
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
-        mMediaPlayer.init(/*mVideoPath*/"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4", VIDEO_RENDER_OPENGL, null);
+        mMediaPlayer.init(/*mVideoPath*/"rtmp://10.180.90.38:1935/live/aaa", VIDEO_RENDER_OPENGL, null);
     }
 
     @Override
