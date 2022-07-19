@@ -10,6 +10,7 @@ package com.byteflow.learnffmpeg;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
@@ -169,7 +170,7 @@ public class AudioVisualMediaPlayerActivity extends AppCompatActivity implements
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue) {
+    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

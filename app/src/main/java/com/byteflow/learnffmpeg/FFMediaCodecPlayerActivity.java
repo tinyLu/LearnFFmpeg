@@ -10,6 +10,7 @@ package com.byteflow.learnffmpeg;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
@@ -41,7 +42,7 @@ import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_REQUEST_RENDER;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.VIDEO_RENDER_ANWINDOW;
 
 public class FFMediaCodecPlayerActivity extends AppCompatActivity implements SurfaceHolder.Callback, FFMediaPlayer.EventCallback{
-    private static final String TAG = "FFMediaCodecPlayerActivity";
+    private static final String TAG = "FFMCPlayerActivity";
     private static final String[] REQUEST_PERMISSIONS = {
             Manifest.permission.WRITE_EXTERNAL_STORAGE,
     };
@@ -136,7 +137,7 @@ public class FFMediaCodecPlayerActivity extends AppCompatActivity implements Sur
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue) {
+    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

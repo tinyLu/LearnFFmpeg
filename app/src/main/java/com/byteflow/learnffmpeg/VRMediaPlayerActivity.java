@@ -10,6 +10,7 @@ package com.byteflow.learnffmpeg;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
@@ -160,7 +161,7 @@ public class VRMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue) {
+    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

@@ -7,7 +7,9 @@
  * */
 
 
+#include <FFMediaPlayer.h>
 #include "VideoDecoder.h"
+#include <android/bitmap.h>
 
 void VideoDecoder::OnDecoderReady() {
     LOGCATE("VideoDecoder::OnDecoderReady");
@@ -15,7 +17,7 @@ void VideoDecoder::OnDecoderReady() {
     m_VideoHeight = GetCodecContext()->height;
 
     if(m_MsgContext && m_MsgCallback)
-        m_MsgCallback(m_MsgContext, MSG_DECODER_READY, 0);
+        m_MsgCallback(m_MsgContext, MSG_DECODER_READY, 0, nullptr);
 
     if(m_VideoRender != nullptr) {
         int dstSize[2] = {0};
@@ -48,7 +50,7 @@ void VideoDecoder::OnDecoderDone() {
     LOGCATE("VideoDecoder::OnDecoderDone");
 
     if(m_MsgContext && m_MsgCallback)
-        m_MsgCallback(m_MsgContext, MSG_DECODER_DONE, 0);
+        m_MsgCallback(m_MsgContext, MSG_DECODER_DONE, 0, nullptr);
 
     if(m_VideoRender)
         m_VideoRender->UnInit();
@@ -80,7 +82,88 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
     LOGCATE("VideoDecoder::OnFrameAvailable frame=%p", frame);
     if(m_VideoRender != nullptr && frame != nullptr) {
         NativeImage image;
-        LOGCATE("VideoDecoder::OnFrameAvailable frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", frame->width, frame->height, GetCodecContext()->pix_fmt, frame->linesize[0], frame->linesize[1],frame->linesize[2]);
+        LOGCATE("VideoDecoder::OnFrameAvailable 12 frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", frame->width, frame->height, GetCodecContext()->pix_fmt, frame->linesize[0], frame->linesize[1],frame->linesize[2]);
+
+        if (nullptr != m_MsgContext) {
+            LOGCATE("VideoDecoder::OnFrameAvailable 14--^^--");
+            FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
+
+
+            JavaVM *vm = player->m_JavaVM;
+            JNIEnv *env;
+
+            int status;
+            if (nullptr == vm) {
+                LOGCATE("VideoDecoder::OnFrameAvailable m_JavaVM == nullptr");
+            }
+            status = vm->GetEnv((void **)&env, JNI_VERSION_1_4);
+            if (status != JNI_OK) {
+                status = vm->AttachCurrentThread(&env, nullptr);
+                if (status != JNI_OK) {
+                    LOGCATE("VideoDecoder::OnFrameAvailable failed to attach current thread");
+                }
+            }
+
+            if (nullptr == bitMap) {
+                bitMap = player->CreateBitmap(env, m_RenderWidth, m_RenderHeight);
+                LOGCATE("VideoDecoder::OnFrameAvailable create bitmap");
+            }
+
+            void *dstPixels = 0;
+            AndroidBitmapInfo dstBitmapInfo;
+            AndroidBitmap_getInfo(env, bitMap, &dstBitmapInfo);
+            LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
+
+            sws_scale(m_SwsContext, frame->data, frame->linesize, 0,
+                      m_VideoHeight, m_RGBAFrame->data, m_RGBAFrame->linesize);
+
+            AndroidBitmap_lockPixels(env, bitMap, &dstPixels);
+
+            LOGCATE("VideoDecoder::OnFrameAvailable ccc");
+            memcpy((uint8_t *)dstPixels, m_RGBAFrame->data, m_RenderWidth * m_RenderHeight * 4);
+            LOGCATE("VideoDecoder::OnFrameAvailable ddd");
+
+            AndroidBitmap_unlockPixels(env, bitMap);
+
+            pthread_mutex_lock(&callback_mutex);
+            if(m_MsgContext && m_MsgCallback)
+                m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, bitMap);
+            pthread_mutex_unlock(&callback_mutex);
+
+            /*pthread_mutex_lock(&callback_mutex);
+            LOGCATE("VideoDecoder::OnFrameAvailable aaa");
+            void *dstPixels = 0;
+            AndroidBitmapInfo dstBitmapInfo;
+            AndroidBitmap_getInfo(env, player->bitMap, &dstBitmapInfo);
+            LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
+
+            pthread_mutex_unlock(&callback_mutex);*/
+
+            /*bool isAttach = false;
+
+            try {
+                JNIEnv *env = player->GetJNIEnv(&isAttach);
+                if (nullptr != env) {
+                    AndroidBitmap_getInfo(env, player->bitMap, &dstBitmapInfo);
+
+                    //AndroidBitmap_lockPixels(env, player->bitMap, &dstPixels);
+                    uint32_t dstHeight = dstBitmapInfo.height;
+                    uint32_t dstWidth = dstBitmapInfo.width;
+
+                    LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstWidth, dstHeight);
+                    //AndroidBitmap_unlockPixels(env, player->bitMap);
+                } else {
+                    LOGCATE("VideoDecoder::OnFrameAvailable env is null!!");
+                }
+
+            } catch (...) {
+                LOGCATE("VideoDecoder::OnFrameAvailable unknown error!!");
+            }*/
+
+        }
+
+        //return;
+
         if(m_VideoRender->GetRenderType() == VIDEO_RENDER_ANWINDOW)
         {
             sws_scale(m_SwsContext, frame->data, frame->linesize, 0,
@@ -91,6 +174,9 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
             image.height = m_RenderHeight;
             image.ppPlane[0] = m_RGBAFrame->data[0];
             image.pLineSize[0] = image.width * 4;
+
+            LOGCATE("VideoDecoder::OnFrameAvailable 13 frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", m_RGBAFrame->width, m_RGBAFrame->height, m_RGBAFrame->format, m_RGBAFrame->linesize[0], m_RGBAFrame->linesize[1],m_RGBAFrame->linesize[2]);
+            return;
         } else if(GetCodecContext()->pix_fmt == AV_PIX_FMT_YUV420P || GetCodecContext()->pix_fmt == AV_PIX_FMT_YUVJ420P) {
             image.format = IMAGE_FORMAT_I420;
             image.width = frame->width;
@@ -145,5 +231,5 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
     }
 
     if(m_MsgContext && m_MsgCallback)
-        m_MsgCallback(m_MsgContext, MSG_REQUEST_RENDER, 0);
+        m_MsgCallback(m_MsgContext, MSG_REQUEST_RENDER, 0, nullptr);
 }

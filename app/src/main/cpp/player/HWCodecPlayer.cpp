@@ -158,7 +158,7 @@ void HWCodecPlayer::PostMessage(void *context, int msgType, float msgCode) {
             return;
         jobject javaObj = player->GetJavaObj();
         jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IF)V");
-        env->CallVoidMethod(javaObj, mid, msgType, msgCode);
+        env->CallVoidMethod(javaObj, mid, msgType, msgCode, nullptr);
         if(isAttach)
             player->GetJavaVM()->DetachCurrentThread();
 

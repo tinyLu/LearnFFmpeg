@@ -135,7 +135,7 @@ int DecoderBase::InitFFDecoder() {
     } while (false);
 
     if(result != 0 && m_MsgContext && m_MsgCallback)
-        m_MsgCallback(m_MsgContext, MSG_DECODER_INIT_ERROR, 0);
+        m_MsgCallback(m_MsgContext, MSG_DECODER_INIT_ERROR, 0, nullptr);
 
     return result;
 }
@@ -231,7 +231,7 @@ long DecoderBase::AVSync() {
     long elapsedTime = curSysTime - m_StartTimeStamp;
 
     if(m_MsgContext && m_MsgCallback && m_MediaType == AVMEDIA_TYPE_AUDIO)
-        m_MsgCallback(m_MsgContext, MSG_DECODING_TIME, m_CurTimeStamp * 1.0f / 1000);
+        m_MsgCallback(m_MsgContext, MSG_DECODING_TIME, m_CurTimeStamp * 1.0f / 1000, nullptr);
 
     long delay = 0;
 

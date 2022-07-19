@@ -43,7 +43,8 @@ enum DecoderMsg {
     MSG_DECODER_READY,
     MSG_DECODER_DONE,
     MSG_REQUEST_RENDER,
-    MSG_DECODING_TIME
+    MSG_DECODING_TIME,
+    MSG_DECODER_BITMAP
 };
 
 class DecoderBase : public Decoder {

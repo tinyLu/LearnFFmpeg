@@ -10,6 +10,7 @@ package com.byteflow.learnffmpeg;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -143,7 +144,7 @@ public class StreamMediaPlayerActivity extends AppCompatActivity implements Surf
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue) {
+    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

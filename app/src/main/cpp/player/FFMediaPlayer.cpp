@@ -12,6 +12,7 @@
 #include <render/video/VideoGLRender.h>
 #include <render/video/VRGLRender.h>
 #include "FFMediaPlayer.h"
+#include <android/bitmap.h>
 
 void FFMediaPlayer::Init(JNIEnv *jniEnv, jobject obj, char *url, int videoRenderType, jobject surface) {
     jniEnv->GetJavaVM(&m_JavaVM);
@@ -19,6 +20,8 @@ void FFMediaPlayer::Init(JNIEnv *jniEnv, jobject obj, char *url, int videoRender
 
     m_VideoDecoder = new VideoDecoder(url);
     m_AudioDecoder = new AudioDecoder(url);
+
+    //CreateBitmap(jniEnv, 240, 160);
 
     if(videoRenderType == VIDEO_RENDER_OPENGL) {
         m_VideoDecoder->SetVideoRender(VideoGLRender::GetInstance());
@@ -143,6 +146,28 @@ JNIEnv *FFMediaPlayer::GetJNIEnv(bool *isAttach) {
     return env;
 }
 
+jobject FFMediaPlayer::CreateBitmap(JNIEnv *env, int width, int height) {
+    // 找到 Bitmap.class 和 该类中的 createBitmap 方法
+    jclass clz_bitmap = env->FindClass("android/graphics/Bitmap");
+    jmethodID mtd_bitmap = env->GetStaticMethodID(
+            clz_bitmap, "createBitmap",
+            "(IILandroid/graphics/Bitmap$Config;)Landroid/graphics/Bitmap;");
+
+    // 配置 Bitmap
+    jstring str_config = env->NewStringUTF("ARGB_8888");
+    jclass clz_config = env->FindClass("android/graphics/Bitmap$Config");
+    jmethodID mtd_config = env->GetStaticMethodID(
+            clz_config, "valueOf", "(Ljava/lang/String;)Landroid/graphics/Bitmap$Config;");
+    jobject obj_config = env->CallStaticObjectMethod(clz_config, mtd_config, str_config);
+
+    // 创建 Bitmap 对象
+    jobject bitmap = env->CallStaticObjectMethod(
+            clz_bitmap, mtd_bitmap, width, height, obj_config);
+
+    LOGCATE("FFMediaPlayer::CreateBitmap %d, %d", width, height);
+    return bitmap;
+}
+
 jobject FFMediaPlayer::GetJavaObj() {
     return m_JavaObj;
 }
@@ -151,7 +176,7 @@ JavaVM *FFMediaPlayer::GetJavaVM() {
     return m_JavaVM;
 }
 
-void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode) {
+void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode, jobject bitmap) {
     if(context != nullptr)
     {
         FFMediaPlayer *player = static_cast<FFMediaPlayer *>(context);
@@ -160,9 +185,23 @@ void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode) {
         LOGCATE("FFMediaPlayer::PostMessage env=%p", env);
         if(env == nullptr)
             return;
+
+        if (msgType == MSG_DECODER_READY) {
+            player->bitMap = player->CreateBitmap(env, player->m_VideoDecoder->GetVideoWidth(), player->m_VideoDecoder->GetVideoHeight());
+
+            //player->m_VideoDecoder->bitMap = player->bitMap;
+
+            LOGCATE("FFMediaPlayer::PostMessage aaa");
+            AndroidBitmapInfo dstBitmapInfo;
+            AndroidBitmap_getInfo(env, player->bitMap, &dstBitmapInfo);
+            LOGCATE("FFMediaPlayer::PostMessage dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
+        } else if (msgType == MSG_DECODER_BITMAP) {
+            LOGCATE("FFMediaPlayer::PostMessage bbb bitmap");
+        }
+
         jobject javaObj = player->GetJavaObj();
-        jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IF)V");
-        env->CallVoidMethod(javaObj, mid, msgType, msgCode);
+        jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IFLandroid/graphics/Bitmap;)V");
+        env->CallVoidMethod(javaObj, mid, msgType, msgCode, bitmap);
         if(isAttach)
             player->GetJavaVM()->DetachCurrentThread();
 

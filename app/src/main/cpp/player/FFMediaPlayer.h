@@ -26,12 +26,15 @@ public:
     virtual void SeekToPosition(float position);
     virtual long GetMediaParams(int paramType);
 
-private:
     virtual JNIEnv *GetJNIEnv(bool *isAttach);
+    jobject bitMap = nullptr;
+    virtual jobject CreateBitmap(JNIEnv *jniEnv, int width, int height);
+private:
+
     virtual jobject GetJavaObj();
     virtual JavaVM *GetJavaVM();
 
-    static void PostMessage(void *context, int msgType, float msgCode);
+    static void PostMessage(void *context, int msgType, float msgCode, jobject bitmap);
 
     VideoDecoder *m_VideoDecoder = nullptr;
     AudioDecoder *m_AudioDecoder = nullptr;

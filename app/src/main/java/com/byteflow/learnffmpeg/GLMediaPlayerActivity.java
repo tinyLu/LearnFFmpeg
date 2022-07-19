@@ -10,11 +10,13 @@ package com.byteflow.learnffmpeg;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Toast;
 
@@ -37,6 +39,7 @@ import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MEDIA_PARAM_VIDEO_WID
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODER_DONE;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODER_INIT_ERROR;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODER_READY;
+import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODING_BITMAP;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_DECODING_TIME;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.MSG_REQUEST_RENDER;
 import static com.byteflow.learnffmpeg.media.FFMediaPlayer.VIDEO_GL_RENDER;
@@ -52,11 +55,13 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private FFMediaPlayer mMediaPlayer = null;
     private SeekBar mSeekBar = null;
     private boolean mIsTouch = false;
+    private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_gl_media_player);
+        mImageV = findViewById(R.id.imageView);
         mGLSurfaceView = findViewById(R.id.surface_view);
         mGLSurfaceView.setEGLContextClientVersion(3);
         mGLSurfaceView.setRenderer(this);
@@ -87,7 +92,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         });
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
-        mMediaPlayer.init(mVideoPath, VIDEO_RENDER_OPENGL, null);
+        mMediaPlayer.init(/*mVideoPath*/"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4", VIDEO_RENDER_OPENGL, null);
     }
 
     @Override
@@ -148,7 +153,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue) {
+    public void onPlayerEvent(final int msgType, final float msgValue, final Bitmap bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override
@@ -167,6 +172,16 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
                     case MSG_DECODING_TIME:
                         if(!mIsTouch)
                             mSeekBar.setProgress((int) msgValue);
+                        break;
+                    case MSG_DECODING_BITMAP:
+                        if (null != bitmap) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    mImageV.setImageBitmap(bitmap);
+                                }
+                            });
+                        }
                         break;
                     default:
                         break;

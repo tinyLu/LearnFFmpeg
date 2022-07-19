@@ -1,8 +1,10 @@
 package com.byteflow.learnffmpeg.media;
 
+import android.graphics.Bitmap;
 import android.media.AudioFormat;
 import android.media.AudioManager;
 import android.media.AudioTrack;
+import android.util.Log;
 import android.view.Surface;
 
 public class FFMediaPlayer {
@@ -24,6 +26,7 @@ public class FFMediaPlayer {
     public static final int MSG_DECODER_DONE            = 2;
     public static final int MSG_REQUEST_RENDER          = 3;
     public static final int MSG_DECODING_TIME           = 4;
+    public static final int MSG_DECODING_BITMAP         = 5;
 
     public static final int MEDIA_PARAM_VIDEO_WIDTH     = 0x0001;
     public static final int MEDIA_PARAM_VIDEO_HEIGHT    = 0x0002;
@@ -110,9 +113,13 @@ public class FFMediaPlayer {
         native_SetMediaParams(mNativePlayerHandle, paramType, param);
     }
 
-    private void playerEventCallback(int msgType, float msgValue) {
+    private void playerEventCallback(int msgType, float msgValue, Bitmap bitmap) {
+        if (null != bitmap) {
+            Log.d("playerEventCallback", "w:" + bitmap.getWidth() + ", h:" + bitmap.getHeight());
+        }
+
         if(mEventCallback != null)
-            mEventCallback.onPlayerEvent(msgType, msgValue);
+            mEventCallback.onPlayerEvent(msgType, msgValue, bitmap);
 
     }
 
@@ -143,7 +150,7 @@ public class FFMediaPlayer {
     public static native void native_SetTouchLoc(int renderType, float touchX, float touchY);
 
     public interface EventCallback {
-        void onPlayerEvent(int msgType, float msgValue);
+        void onPlayerEvent(int msgType, float msgValue, Bitmap bitmap);
     }
 
 }

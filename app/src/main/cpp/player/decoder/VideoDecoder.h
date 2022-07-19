@@ -23,17 +23,20 @@ extern "C" {
 
 #include <render/video/VideoRender.h>
 #include <SingleVideoRecorder.h>
+#include <jni.h>
 #include "DecoderBase.h"
 
 class VideoDecoder : public DecoderBase {
 
 public:
     VideoDecoder(char *url){
+        pthread_mutex_init(&callback_mutex, NULL);
         Init(url, AVMEDIA_TYPE_VIDEO);
     }
 
     virtual ~VideoDecoder(){
         UnInit();
+        pthread_mutex_destroy(&callback_mutex);
     }
 
     int GetVideoWidth()
@@ -50,12 +53,18 @@ public:
         m_VideoRender = videoRender;
     }
 
+    jobject bitMap = nullptr;
+
 private:
+    pthread_mutex_t callback_mutex;
+
     virtual void OnDecoderReady();
     virtual void OnDecoderDone();
     virtual void OnFrameAvailable(AVFrame *frame);
 
-    const AVPixelFormat DST_PIXEL_FORMAT = AV_PIX_FMT_RGBA;
+    //const AVPixelFormat DST_PIXEL_FORMAT = AV_PIX_FMT_RGBA;
+    //const AVPixelFormat DST_PIXEL_FORMAT = AV_PIX_FMT_NV21;
+    const AVPixelFormat DST_PIXEL_FORMAT = AV_PIX_FMT_ABGR;
 
     int m_VideoWidth = 0;
     int m_VideoHeight = 0;

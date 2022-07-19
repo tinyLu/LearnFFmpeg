@@ -15,7 +15,9 @@
 #ifndef LEARNFFMPEG_DECODER_H
 #define LEARNFFMPEG_DECODER_H
 
-typedef void (*MessageCallback)(void*, int, float);
+#include <jni.h>
+
+typedef void (*MessageCallback)(void*, int, float, jobject bitmap);
 typedef long (*AVSyncCallback)(void*);
 
 class Decoder {
