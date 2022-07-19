@@ -1,0 +1,26 @@
+apply plugin: 'com.android.library'
+apply plugin: 'kotlin-android'
+apply plugin: 'maven-publish'
+
+android {
+  compileSdkVersion 32
+
+  defaultConfig {
+    minSdkVersion 16
+    targetSdkVersion 32
+    buildConfigField 'int', 'VERSION_CODE', "$version_code"
+    buildConfigField 'String', 'VERSION_NAME', "\"$version_name\""
+  }
+  buildTypes {
+    release {
+      minifyEnabled false
+      consumerProguardFiles 'proguard-rules.pro'
+    }
+  }
+}
+
+dependencies {
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+  testImplementation 'junit:junit:4.13.2'
+  testImplementation "org.mockito.kotlin:mockito-kotlin:4.0.0"
+}

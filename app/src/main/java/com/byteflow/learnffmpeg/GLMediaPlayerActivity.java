@@ -11,6 +11,7 @@ package com.byteflow.learnffmpeg;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
+import android.graphics.ImageFormat;
 import android.opengl.GLSurfaceView;
 import android.os.Build;
 import android.os.Bundle;
@@ -27,6 +28,10 @@ import androidx.core.app.ActivityCompat;
 import com.byteflow.learnffmpeg.media.FFMediaPlayer;
 import com.byteflow.learnffmpeg.media.MyGLSurfaceView;
 import com.byteflow.learnffmpeg.util.CommonUtils;
+import com.pedro.encoder.Frame;
+import com.pedro.rtmp.utils.ConnectCheckerRtmp;
+import com.rtmp.sender.ImageUtils;
+import com.rtmp.sender.VideoSenderManager;
 
 import java.util.logging.LogManager;
 
@@ -57,6 +62,44 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private boolean mIsTouch = false;
     private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
+
+    private VideoSenderManager videoSenderManager = new VideoSenderManager(new ConnectCheckerRtmp() {
+        @Override
+        public void onConnectionStartedRtmp(@NonNull String rtmpUrl) {
+
+        }
+
+        @Override
+        public void onConnectionSuccessRtmp() {
+
+        }
+
+        @Override
+        public void onConnectionFailedRtmp(@NonNull String reason) {
+
+        }
+
+        @Override
+        public void onNewBitrateRtmp(long bitrate) {
+
+        }
+
+        @Override
+        public void onDisconnectRtmp() {
+
+        }
+
+        @Override
+        public void onAuthErrorRtmp() {
+
+        }
+
+        @Override
+        public void onAuthSuccessRtmp() {
+
+        }
+    });
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -93,6 +136,10 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
         mMediaPlayer.init(/*mVideoPath*/"rtmp://10.180.90.38:1935/live/aaa", VIDEO_RENDER_OPENGL, null);
+
+        if (videoSenderManager.prepareVideo()) {
+            videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");
+        }
     }
 
     @Override
@@ -105,7 +152,6 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
             if(mMediaPlayer != null)
                 mMediaPlayer.play();
         }
-
     }
 
     @Override
@@ -134,6 +180,8 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         super.onDestroy();
         if(mMediaPlayer != null)
             mMediaPlayer.unInit();
+
+        videoSenderManager.stopStream();
     }
 
     @Override
@@ -175,6 +223,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
                         break;
                     case MSG_DECODING_BITMAP:
                         if (null != bitmap) {
+                            videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {

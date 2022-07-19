@@ -1,2 +1,6 @@
 include ':app'
 rootProject.name='LearnFFmpeg'
+include ':encoder'
+include ':rtmp'
+include ':rtsp'
+include ':rtplibrary'
