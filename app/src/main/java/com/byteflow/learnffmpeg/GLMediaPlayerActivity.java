@@ -64,6 +64,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
 
+    private boolean mVideoSenderPrepare = false;
     private VideoSenderManager videoSenderManager = new VideoSenderManager(new ConnectCheckerRtmp() {
         @Override
         public void onConnectionStartedRtmp(@NonNull String rtmpUrl) {
@@ -137,12 +138,10 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         mMediaPlayer = new FFMediaPlayer();
         mMediaPlayer.addEventCallback(this);
 
-        mMediaPlayer.init(/*mVideoPath*/"rtmp://10.180.90.38:1935/live/aaa", VIDEO_RENDER_OPENGL, null);
+        //mMediaPlayer.init("rtsp://admin:a12345678@y52t229909.zicp.vip:554/Streaming/Channels/101", VIDEO_RENDER_OPENGL, null);
+        mMediaPlayer.init(/*mVideoPath*/"rtsp://192.168.101.222:8554", VIDEO_RENDER_OPENGL, null);
+        //mMediaPlayer.init(/*mVideoPath*/"rtmp://10.180.90.38:1935/live/aaa", VIDEO_RENDER_OPENGL, null);
         //mMediaPlayer.init(/*mVideoPath*/"rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mp4", VIDEO_RENDER_OPENGL, null);
-
-        if (videoSenderManager.prepareVideo()) {
-            videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");
-        }
     }
 
     @Override
@@ -205,7 +204,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
 
     @Override
     public void onPlayerEvent(final int msgType, final float msgValue, final Bitmap bitmap) {
-        Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
+        Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]  mVideoSenderPrepare:" + mVideoSenderPrepare);
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -226,13 +225,19 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
                         break;
                     case MSG_DECODING_BITMAP:
                         if (null != bitmap) {
-                            videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
-                            runOnUiThread(new Runnable() {
+
+                            if (mVideoSenderPrepare) {
+                                videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
+                            } else {
+                                callVideoSenderPrepare(bitmap);
+                            }
+
+                            /*runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
                                     mImageV.setImageBitmap(bitmap);
                                 }
-                            });
+                            });*/
                         }
                         break;
                     default:
@@ -240,7 +245,15 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
                 }
             }
         });
+    }
 
+    private synchronized void callVideoSenderPrepare(final Bitmap bitmap) {
+        if (!mVideoSenderPrepare && null != bitmap) {
+            if (videoSenderManager.prepareVideo(bitmap.getWidth(), bitmap.getHeight(), 1024 * 1024)) {
+                videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");
+                mVideoSenderPrepare = true;
+            }
+        }
     }
 
     private void onDecoderReady() {

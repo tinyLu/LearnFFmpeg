@@ -12,7 +12,6 @@ import com.pedro.encoder.video.GetVideoData;
 import com.pedro.encoder.video.VideoEncoder;
 import com.pedro.rtmp.rtmp.RtmpClient;
 import com.pedro.rtmp.utils.ConnectCheckerRtmp;
-import com.pedro.rtplibrary.util.FpsListener;
 
 import java.nio.ByteBuffer;
 
@@ -22,7 +21,6 @@ public class VideoSenderManager implements GetVideoData , GetCameraData {
     private final RtmpClient rtmpClient;
 
     protected VideoEncoder videoEncoder;
-    private final FpsListener fpsListener = new FpsListener();
 
     private boolean streaming = false;
     private int previewWidth, previewHeight;
@@ -39,7 +37,6 @@ public class VideoSenderManager implements GetVideoData , GetCameraData {
 
     @Override
     public void getVideoData(ByteBuffer h264Buffer, MediaCodec.BufferInfo info) {
-        fpsListener.calculateFps();
         if (streaming) getH264DataRtp(h264Buffer, info);
     }
 
@@ -118,7 +115,8 @@ public class VideoSenderManager implements GetVideoData , GetCameraData {
      * doesn't support any configuration seated or your device hasn't a H264 encoder).
      */
     public boolean prepareVideo() {
-        return prepareVideo(640, 480, 30, 1200 * 1024, 90);
+        //return prepareVideo(640, 480, 30, 1200 * 1024, 90);
+        return prepareVideo(1920, 1080, 30, 2000 * 1024, 0);
     }
 
     /**

@@ -53,9 +53,9 @@ dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
     
     implementation project(path: ':encoder')
-    implementation project(path: ':rtsp')
+    //implementation project(path: ':rtsp')
     implementation project(path: ':rtmp')
-    implementation project(path: ':rtplibrary')
+    //implementation project(path: ':rtplibrary')
 
 
     implementation 'androidx.appcompat:appcompat:1.0.2'
