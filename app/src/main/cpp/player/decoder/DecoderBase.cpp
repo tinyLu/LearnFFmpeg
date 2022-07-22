@@ -368,6 +368,7 @@ int DecoderBase::DecodeOnePacket() {
                 if (pts_time > now_time) {
                     av_usleep((unsigned int)(pts_time - now_time));
                 }
+
             }
 
             in_stream = m_AVFormatContext->streams[m_Packet->stream_index];
@@ -391,6 +392,7 @@ int DecoderBase::DecodeOnePacket() {
                 avError(result);
                 break;
             }
+
         } else {
             if(m_Packet->stream_index == m_StreamIndex) {
 
