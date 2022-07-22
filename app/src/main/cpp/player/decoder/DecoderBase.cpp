@@ -92,6 +92,65 @@ int DecoderBase::InitFFDecoder() {
             }
         }
 
+        if (m_MediaType == AVMEDIA_TYPE_VIDEO && open_direct_push) {
+            result = avformat_alloc_output_context2(&m_OutCtx, NULL, "flv", "rtmp://10.180.90.38:1935/live/bbb");
+            LOGCATE("DecoderBase::InitFFDecoder avformat_alloc_output_context2 result=%d", result);
+
+            for (int i = 0; i < m_AVFormatContext->nb_streams; i++) {
+                AVStream *in_stream = m_AVFormatContext->streams[i];
+                AVStream *out_stream = avformat_new_stream(m_OutCtx, in_stream->codec->codec);
+
+                if (!out_stream) {
+                    LOGCATE("DecoderBase::InitFFDecoder avformat_new_stream error!");
+                } else {
+                    result = avcodec_parameters_copy(out_stream->codecpar, in_stream->codecpar);
+                    if (result < 0) {
+                        LOGCATE("DecoderBase::InitFFDecoder avcodec_parameters_copy error! %d", result);
+                    } else {
+                        out_stream->codecpar->codec_tag = 0;
+                        out_stream->codec->codec_tag = 0;
+                        if (m_OutCtx->oformat->flags & AVFMT_GLOBALHEADER) {
+                            out_stream->codec->flags = out_stream->codec->flags | AV_CODEC_FLAG_GLOBAL_HEADER;
+                        }
+
+
+                        /*AVCodecParameters *out_codecPar = out_stream->codecpar;
+                        out_codecPar->codec_type = AVMEDIA_TYPE_VIDEO;
+                        out_codecPar->codec_id = AV_CODEC_ID_H264;
+                        out_codecPar->bit_rate = 2000000;
+                        out_codecPar->width = 1920;
+                        out_codecPar->height = 1080;
+                        out_codecPar->codec_tag = 0;
+                        out_codecPar->format = AV_PIX_FMT_YUV420P;
+
+                        AVCodecContext *avCtx = out_stream->codec;
+                        avCtx->codec_type = AVMEDIA_TYPE_VIDEO;
+                        avCtx->codec_id = AV_CODEC_ID_H264;
+                        avCtx->bit_rate = 2000000;
+                        avCtx->width = 1920;
+                        avCtx->height = 1080;
+                        avCtx->time_base.num = 1;
+                        avCtx->time_base.den = 1;*/
+
+                        //out_stream->time_base.den = 1;
+                        //out_stream->time_base.num = 1;
+
+                        result = avio_open(&m_OutCtx->pb, "rtmp://10.180.90.38:1935/live/bbb", AVIO_FLAG_WRITE);
+                        if (result < 0) {
+                            LOGCATE("DecoderBase::InitFFDecoder avio_open error! %d", result);
+                            avError(result);
+                        } else {
+                            result = avformat_write_header(m_OutCtx, 0);
+                            if (result < 0) {
+                                LOGCATE("DecoderBase::InitFFDecoder avformat_write_header error! %d", result);
+                                avError(result);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         if(m_StreamIndex == -1) {
             LOGCATE("DecoderBase::InitFFDecoder Fail to find stream index.");
             break;
@@ -194,6 +253,11 @@ void DecoderBase::DecodingLoop() {
         if(m_StartTimeStamp == -1)
             m_StartTimeStamp = GetSysCurrentTime();
 
+        if (open_direct_push) {
+            start_time = av_gettime();
+            frame_index = 0;
+        }
+
         if(DecodeOnePacket() != 0) {
             //解码结束，暂停解码器
             std::unique_lock<std::mutex> lock(m_Mutex);
@@ -258,52 +322,106 @@ int DecoderBase::DecodeOnePacket() {
         int seek_ret = avformat_seek_file(m_AVFormatContext, -1, seek_min, seek_target, seek_max, 0);
         if (seek_ret < 0) {
             m_SeekSuccess = false;
-            LOGCATE("BaseDecoder::DecodeOneFrame error while seeking m_MediaType=%d", m_MediaType);
+            LOGCATE("DecoderBase::DecodeOneFrame error while seeking m_MediaType=%d", m_MediaType);
         } else {
             if (-1 != m_StreamIndex) {
                 avcodec_flush_buffers(m_AVCodecContext);
             }
             ClearCache();
             m_SeekSuccess = true;
-            LOGCATE("BaseDecoder::DecodeOneFrame seekFrame pos=%f, m_MediaType=%d", m_SeekPosition, m_MediaType);
+            LOGCATE("DecoderBase::DecodeOneFrame seekFrame pos=%f, m_MediaType=%d", m_SeekPosition, m_MediaType);
         }
     }
     int result = av_read_frame(m_AVFormatContext, m_Packet);
+
+    //输入输出视频流
+    AVStream *in_stream, *out_stream;
+
     while(result == 0) {
-        if(m_Packet->stream_index == m_StreamIndex) {
-//            UpdateTimeStamp(m_Packet);
-//            if(AVSync() > DELAY_THRESHOLD && m_CurTimeStamp > DELAY_THRESHOLD)
-//            {
-//                result = 0;
-//                goto __EXIT;
-//            }
 
-            if(avcodec_send_packet(m_AVCodecContext, m_Packet) == AVERROR_EOF) {
-                //解码结束
-                result = -1;
-                goto __EXIT;
+        if (open_direct_push && m_MediaType == AVMEDIA_TYPE_VIDEO) {
+            if (m_Packet->pts == AV_NOPTS_VALUE) {
+                AVRational time_base1 = m_AVFormatContext->streams[m_StreamIndex]->time_base;
+                int64_t  calc_duration = (double) AV_TIME_BASE / av_q2d(m_AVFormatContext->streams[m_StreamIndex]->r_frame_rate);
+
+                // 配置参数
+                m_Packet->pts = (double )(frame_index * calc_duration) / (double )(av_q2d(time_base1) * AV_TIME_BASE);
+                m_Packet->dts = m_Packet->pts;
+                m_Packet->duration = (double )calc_duration / (double )(av_q2d(time_base1) * AV_TIME_BASE);
             }
 
-            //一个 packet 包含多少 frame?
-            int frameCount = 0;
-            while (avcodec_receive_frame(m_AVCodecContext, m_Frame) == 0) {
-                //更新时间戳
-                UpdateTimeStamp();
-                //同步
-                AVSync();
-                //渲染
-                LOGCATE("DecoderBase::DecodeOnePacket 000 m_MediaType=%d", m_MediaType);
-                OnFrameAvailable(m_Frame);
-                LOGCATE("DecoderBase::DecodeOnePacket 0001 m_MediaType=%d", m_MediaType);
-                frameCount ++;
+            if(m_Packet->stream_index == m_StreamIndex) {
+                if(avcodec_send_packet(m_AVCodecContext, m_Packet) == AVERROR_EOF) {
+                    //解码结束
+                    result = -1;
+                    goto __EXIT;
+                }
+
+                AVRational time_base = m_AVFormatContext->streams[m_StreamIndex]->time_base;
+                AVRational time_base_q = {1, AV_TIME_BASE};
+                int64_t pts_time = av_rescale_q(m_Packet->dts, time_base, time_base_q);
+                int64_t now_time = av_gettime() - start_time;
+
+                AVRational avr = m_AVFormatContext->streams[m_StreamIndex]->time_base;
+
+                LOGCATE("DecoderBase::DecodeOneFrame avr.num=%d  avr.den=%d %ld %ld %ld", avr.num, avr.den, m_Packet->dts, m_Packet->pts, pts_time);
+                if (pts_time > now_time) {
+                    av_usleep((unsigned int)(pts_time - now_time));
+                }
             }
-            LOGCATE("BaseDecoder::DecodeOneFrame frameCount=%d", frameCount);
-            //判断一个 packet 是否解码完成
-            if(frameCount > 0) {
-                result = 0;
-                goto __EXIT;
+
+            in_stream = m_AVFormatContext->streams[m_Packet->stream_index];
+            out_stream = m_OutCtx->streams[m_Packet->stream_index];
+
+            m_Packet->pts = av_rescale_q_rnd(m_Packet->pts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+            m_Packet->dts = av_rescale_q_rnd(m_Packet->dts, in_stream->time_base, out_stream->time_base, (AVRounding)(AV_ROUND_NEAR_INF | AV_ROUND_PASS_MINMAX));
+            m_Packet->duration = (int) av_rescale_q(m_Packet->duration, in_stream->time_base, out_stream->time_base);
+            m_Packet->pos = -1;
+
+            if(m_Packet->stream_index == m_StreamIndex) {
+                frame_index++;
+            }
+
+            result = av_interleaved_write_frame(m_OutCtx, m_Packet);
+
+            LOGCATE("DecoderBase::DecodeOneFrame av_interleaved_write_frame result=%d frame_index=%d", result,frame_index);
+
+            if (result < 0) {
+                LOGCATE("DecoderBase::DecodeOneFrame av_interleaved_write_frame error! %d", result);
+                avError(result);
+                break;
+            }
+        } else {
+            if(m_Packet->stream_index == m_StreamIndex) {
+
+                if(avcodec_send_packet(m_AVCodecContext, m_Packet) == AVERROR_EOF) {
+                    //解码结束
+                    result = -1;
+                    goto __EXIT;
+                }
+
+                //一个 packet 包含多少 frame?
+                int frameCount = 0;
+                while (avcodec_receive_frame(m_AVCodecContext, m_Frame) == 0) {
+                    //更新时间戳
+                    UpdateTimeStamp();
+                    //同步
+                    AVSync();
+                    //渲染
+                    LOGCATE("DecoderBase::DecodeOnePacket 000 m_MediaType=%d", m_MediaType);
+                    OnFrameAvailable(m_Frame);
+                    LOGCATE("DecoderBase::DecodeOnePacket 0001 m_MediaType=%d", m_MediaType);
+                    frameCount ++;
+                }
+                LOGCATE("BaseDecoder::DecodeOneFrame frameCount=%d", frameCount);
+                //判断一个 packet 是否解码完成
+                if(frameCount > 0) {
+                    result = 0;
+                    goto __EXIT;
+                }
             }
         }
+
         av_packet_unref(m_Packet);
         result = av_read_frame(m_AVFormatContext, m_Packet);
     }
@@ -326,6 +444,14 @@ void DecoderBase::DoAVDecoding(DecoderBase *decoder) {
     decoder->UnInitDecoder();
     decoder->OnDecoderDone();
 
+}
+
+int DecoderBase::avError(int errNum) {
+    char buf[1024];
+    //获取错误信息
+    av_strerror(errNum, buf, sizeof(buf));
+    LOGCATE("DecoderBase::avError %d %s", errNum, buf);
+    return -1;
 }
 
 

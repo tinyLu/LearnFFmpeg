@@ -64,6 +64,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
 
+    private boolean mOpenDirectPush = true;
     private boolean mVideoSenderPrepare = false;
     private VideoSenderManager videoSenderManager = new VideoSenderManager(new ConnectCheckerRtmp() {
         @Override
@@ -183,7 +184,9 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
         if(mMediaPlayer != null)
             mMediaPlayer.unInit();
 
-        videoSenderManager.stopStream();
+        if (!mOpenDirectPush) {
+            videoSenderManager.stopStream();
+        }
     }
 
     @Override
@@ -226,10 +229,12 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
                     case MSG_DECODING_BITMAP:
                         if (null != bitmap) {
 
-                            if (mVideoSenderPrepare) {
-                                videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
-                            } else {
-                                callVideoSenderPrepare(bitmap);
+                            if (!mOpenDirectPush) {
+                                if (mVideoSenderPrepare) {
+                                    videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
+                                } else {
+                                    callVideoSenderPrepare(bitmap);
+                                }
                             }
 
                             /*runOnUiThread(new Runnable() {
