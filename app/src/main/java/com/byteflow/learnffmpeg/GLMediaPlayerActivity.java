@@ -257,7 +257,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
 
     private synchronized void callVideoSenderPrepare(final Bitmap bitmap) {
         if (!mVideoSenderPrepare /*&& null != bitmap*/) {
-            if (videoSenderManager.prepareVideo(1920, 1080, 1024 * 1024)) {
+            if (videoSenderManager.prepareVideo(1920, 1080, 25, 1024 * 1024, 0)) {
                 videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");
                 mVideoSenderPrepare = true;
             }
