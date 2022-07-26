@@ -137,7 +137,7 @@ public class FFMediaCodecPlayerActivity extends AppCompatActivity implements Sur
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
+    public void onPlayerEvent(final int msgType, final float msgValue, byte[] bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

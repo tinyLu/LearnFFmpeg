@@ -54,6 +54,8 @@ public:
     }
 
     jobject bitMap = nullptr;
+    jbyteArray jByteArray = nullptr;
+    uint8_t *m_buffer = nullptr;
 
 private:
     //pthread_mutex_t callback_mutex;

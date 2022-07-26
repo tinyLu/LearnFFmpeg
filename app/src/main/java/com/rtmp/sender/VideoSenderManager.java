@@ -32,7 +32,8 @@ public class VideoSenderManager implements GetVideoData , GetCameraData {
 
     @Override
     public void onSpsPpsVps(ByteBuffer sps, ByteBuffer pps, ByteBuffer vps) {
-        rtmpClient.setVideoInfo(sps, pps, vps);
+        rtmpClient.setVideoInfo(sps.duplicate(), pps.duplicate(), vps != null ? vps.duplicate() : null);
+        //rtmpClient.setVideoInfo(sps, pps, vps);
     }
 
     @Override

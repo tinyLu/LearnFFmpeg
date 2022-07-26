@@ -144,7 +144,7 @@ public class StreamMediaPlayerActivity extends AppCompatActivity implements Surf
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue, Bitmap bitmap) {
+    public void onPlayerEvent(final int msgType, final float msgValue, byte[] bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]");
         runOnUiThread(new Runnable() {
             @Override

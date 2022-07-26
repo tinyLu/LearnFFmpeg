@@ -34,7 +34,7 @@ private:
     virtual jobject GetJavaObj();
     virtual JavaVM *GetJavaVM();
 
-    static void PostMessage(void *context, int msgType, float msgCode, jobject bitmap);
+    static void PostMessage(void *context, int msgType, float msgCode, jbyteArray bitmap);
 
     VideoDecoder *m_VideoDecoder = nullptr;
     AudioDecoder *m_AudioDecoder = nullptr;

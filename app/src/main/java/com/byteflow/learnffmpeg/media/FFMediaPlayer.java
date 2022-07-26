@@ -113,13 +113,20 @@ public class FFMediaPlayer {
         native_SetMediaParams(mNativePlayerHandle, paramType, param);
     }
 
-    private void playerEventCallback(int msgType, float msgValue, Bitmap bitmap) {
-        if (null != bitmap) {
-            Log.d("playerEventCallback", "w:" + bitmap.getWidth() + ", h:" + bitmap.getHeight());
-        }
+    private void playerEventCallback(int msgType, float msgValue, byte[] obj) {
+        if (null != obj) {
+            Log.d("playerEventCallback", "length:" + obj.length);
+            /*if (obj instanceof Bitmap) {
+                Log.d("playerEventCallback", "w:" + ((Bitmap)obj).getWidth() + ", h:" + ((Bitmap)obj).getHeight());
 
-        if(mEventCallback != null)
-            mEventCallback.onPlayerEvent(msgType, msgValue, bitmap);
+                if(mEventCallback != null)
+                    mEventCallback.onPlayerEvent(msgType, msgValue, ((Bitmap)obj));
+            }*/
+
+            if(mEventCallback != null)
+                mEventCallback.onPlayerEvent(msgType, msgValue, obj);
+
+        }
 
     }
 
@@ -150,7 +157,7 @@ public class FFMediaPlayer {
     public static native void native_SetTouchLoc(int renderType, float touchX, float touchY);
 
     public interface EventCallback {
-        void onPlayerEvent(int msgType, float msgValue, Bitmap bitmap);
+        void onPlayerEvent(int msgType, float msgValue, byte[] bitmap);
     }
 
 }

@@ -17,7 +17,7 @@
 
 #include <jni.h>
 
-typedef void (*MessageCallback)(void*, int, float, jobject bitmap);
+typedef void (*MessageCallback)(void*, int, float, jbyteArray jByteArray);
 typedef long (*AVSyncCallback)(void*);
 
 class Decoder {

@@ -64,7 +64,13 @@ void FFMediaPlayer::UnInit() {
     VideoGLRender::ReleaseInstance();
 
     bool isAttach = false;
-    GetJNIEnv(&isAttach)->DeleteGlobalRef(m_JavaObj);
+
+    JNIEnv *env = GetJNIEnv(&isAttach);
+
+    if (env != nullptr) {
+        env->DeleteGlobalRef(m_JavaObj);
+    }
+
     if(isAttach)
         GetJavaVM()->DetachCurrentThread();
 
@@ -176,7 +182,7 @@ JavaVM *FFMediaPlayer::GetJavaVM() {
     return m_JavaVM;
 }
 
-void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode, jobject bitmap) {
+void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode, jbyteArray bitmap) {
     if(context != nullptr)
     {
         FFMediaPlayer *player = static_cast<FFMediaPlayer *>(context);
@@ -200,7 +206,8 @@ void FFMediaPlayer::PostMessage(void *context, int msgType, float msgCode, jobje
         }
 
         jobject javaObj = player->GetJavaObj();
-        jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IFLandroid/graphics/Bitmap;)V");
+        //jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IFLandroid/graphics/Bitmap;)V");
+        jmethodID mid = env->GetMethodID(env->GetObjectClass(javaObj), JAVA_PLAYER_EVENT_CALLBACK_API_NAME, "(IF[B)V");
         env->CallVoidMethod(javaObj, mid, msgType, msgCode, bitmap);
         if(isAttach)
             player->GetJavaVM()->DetachCurrentThread();

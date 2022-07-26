@@ -113,7 +113,7 @@ private:
     //线程函数
     static void DoAVDecoding(DecoderBase *decoder);
 
-    bool open_direct_push = true;
+    bool open_direct_push = false;
     AVFormatContext *m_OutCtx = nullptr;
     long long start_time = 0;
     long long frame_index = 0;

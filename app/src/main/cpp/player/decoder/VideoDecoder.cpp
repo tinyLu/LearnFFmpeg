@@ -42,6 +42,10 @@ void VideoDecoder::OnDecoderReady() {
         m_SwsContext = sws_getContext(m_VideoWidth, m_VideoHeight, GetCodecContext()->pix_fmt,
                                       m_RenderWidth, m_RenderHeight, DST_PIXEL_FORMAT,
                                       SWS_FAST_BILINEAR, NULL, NULL, NULL);
+
+        int32_t size = m_VideoWidth * m_VideoHeight * sizeof(uint8_t) * 3 >> 1;
+        m_buffer = (uint8_t *) av_malloc(size);
+
     } else {
         LOGCATE("VideoDecoder::OnDecoderReady m_VideoRender == null");
     }
@@ -55,6 +59,23 @@ void VideoDecoder::OnDecoderDone() {
 
     if(m_VideoRender)
         m_VideoRender->UnInit();
+
+    if (m_buffer != nullptr) {
+        free(m_buffer);
+        m_buffer = nullptr;
+    }
+
+    if (jByteArray && m_MsgContext) {
+        LOGCATE("VideoDecoder::OnDecoderDone try release jByteArray?");
+        FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
+        bool isAttach = false;
+        JNIEnv *env = player->GetJNIEnv(&isAttach);
+        if (nullptr != env) {
+            env->DeleteLocalRef(jByteArray);
+            jByteArray = nullptr;
+            LOGCATE("VideoDecoder::OnDecoderDone DeleteLocalRef jByteArray ok!");
+        }
+    }
 
     if(m_RGBAFrame != nullptr) {
         av_frame_free(&m_RGBAFrame);
@@ -87,25 +108,8 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
 
         if (nullptr != m_MsgContext) {
             LOGCATE("VideoDecoder::OnFrameAvailable 14--^^--");
-            FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
 
-
-            JavaVM *vm = player->m_JavaVM;
-            JNIEnv *env;
-
-            int status;
-            if (nullptr == vm) {
-                LOGCATE("VideoDecoder::OnFrameAvailable m_JavaVM == nullptr");
-            }
-            status = vm->GetEnv((void **)&env, JNI_VERSION_1_4);
-            if (status != JNI_OK) {
-                status = vm->AttachCurrentThread(&env, nullptr);
-                if (status != JNI_OK) {
-                    LOGCATE("VideoDecoder::OnFrameAvailable failed to attach current thread");
-                }
-            }
-
-            if (nullptr == bitMap) {
+            /*if (nullptr == bitMap) {
                 bitMap = player->CreateBitmap(env, m_RenderWidth, m_RenderHeight);
                 LOGCATE("VideoDecoder::OnFrameAvailable create bitmap");
             }
@@ -115,8 +119,6 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
             AndroidBitmap_getInfo(env, bitMap, &dstBitmapInfo);
             LOGCATE("VideoDecoder::OnFrameAvailable dstWidth=%d, dstHeight=%d", dstBitmapInfo.width, dstBitmapInfo.height);
 
-
-            //sws_scale(m_SwsContext, frame->data, frame->linesize, 0, m_VideoHeight, m_RGBAFrame->data, m_RGBAFrame->linesize);
 
             AndroidBitmap_lockPixels(env, bitMap, &dstPixels);
 
@@ -129,16 +131,48 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
                                frame->width, frame->height
                                );
 
-            //memcpy((uint8_t *)dstPixels, m_RGBAFrame->data, m_RenderWidth * m_RenderHeight * 4);
-
             LOGCATE("VideoDecoder::OnFrameAvailable ddd");
-
-            AndroidBitmap_unlockPixels(env, bitMap);
+            AndroidBitmap_unlockPixels(env, bitMap);*/
 
             //pthread_mutex_lock(&callback_mutex);
 
+            int32_t size = frame->width * frame->height * sizeof(uint8_t) * 3 >> 1;
+
+            LOGCATE("VideoDecoder::OnFrameAvailable eeee %d", size);
+
+            libyuv::I420ToNV21(frame->data[0], frame->linesize[0],
+                               frame->data[1], frame->linesize[1],
+                               frame->data[2], frame->linesize[2],
+                               m_buffer, frame->width,
+                               m_buffer + frame->width * frame->height, frame->width,
+                               frame->width,
+                               frame->height
+            );
+
+
+            FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
+            bool isAttach = false;
+            JNIEnv *env = player->GetJNIEnv(&isAttach);
+
+            LOGCATE("VideoDecoder::OnFrameAvailable fff %d  %d", size, isAttach);
+
+            if (nullptr != env) {
+                if (nullptr == jByteArray) {
+
+                    jbyteArray jArray = env->NewByteArray(size);
+
+                    jByteArray = jArray;
+
+                    //jobject  jo = env->NewGlobalRef(jArray);
+                }
+
+                env->SetByteArrayRegion(jByteArray, 0, size, (jbyte *)m_buffer);
+            }
+
             if(m_MsgContext && m_MsgCallback)
-                m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, bitMap);
+                m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, jByteArray);
+
+            //env->DeleteLocalRef(jByteArray);
 
             //pthread_mutex_unlock(&callback_mutex);
 

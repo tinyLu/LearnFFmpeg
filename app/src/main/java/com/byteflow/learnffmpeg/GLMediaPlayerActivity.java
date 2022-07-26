@@ -64,7 +64,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
 
-    private boolean mOpenDirectPush = true;
+    private boolean mOpenDirectPush = false;
     private boolean mVideoSenderPrepare = false;
     private VideoSenderManager videoSenderManager = new VideoSenderManager(new ConnectCheckerRtmp() {
         @Override
@@ -206,7 +206,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     }
 
     @Override
-    public void onPlayerEvent(final int msgType, final float msgValue, final Bitmap bitmap) {
+    public void onPlayerEvent(final int msgType, final float msgValue, final byte[] bitmap) {
         Log.d(TAG, "onPlayerEvent() called with: msgType = [" + msgType + "], msgValue = [" + msgValue + "]  mVideoSenderPrepare:" + mVideoSenderPrepare);
         runOnUiThread(new Runnable() {
             @Override
@@ -231,11 +231,14 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
 
                             if (!mOpenDirectPush) {
                                 if (mVideoSenderPrepare) {
-                                    videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
+                                    //videoSenderManager.inputYUVData(new Frame(ImageUtils.bitmapToNv21(bitmap, bitmap.getWidth(), bitmap.getHeight()), 0, false, ImageFormat.NV21));
+                                    videoSenderManager.inputYUVData(new Frame(bitmap, 0, false, ImageFormat.NV21));
                                 } else {
-                                    callVideoSenderPrepare(bitmap);
+                                    callVideoSenderPrepare(null);
                                 }
                             }
+
+                            //bitmap.recycle();
 
                             /*runOnUiThread(new Runnable() {
                                 @Override
@@ -253,8 +256,8 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     }
 
     private synchronized void callVideoSenderPrepare(final Bitmap bitmap) {
-        if (!mVideoSenderPrepare && null != bitmap) {
-            if (videoSenderManager.prepareVideo(bitmap.getWidth(), bitmap.getHeight(), 1024 * 1024)) {
+        if (!mVideoSenderPrepare /*&& null != bitmap*/) {
+            if (videoSenderManager.prepareVideo(1920, 1080, 1024 * 1024)) {
                 videoSenderManager.startStream("rtmp://10.180.90.38:1935/live/bbb");
                 mVideoSenderPrepare = true;
             }
