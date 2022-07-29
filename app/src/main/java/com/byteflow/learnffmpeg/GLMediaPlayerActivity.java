@@ -64,7 +64,7 @@ public class GLMediaPlayerActivity extends AppCompatActivity implements GLSurfac
     private ImageView mImageV;
     private String mVideoPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/byteflow/one_piece.mp4";
 
-    private boolean mOpenDirectPush = false;
+    private boolean mOpenDirectPush = true;
     private boolean mVideoSenderPrepare = false;
     private VideoSenderManager videoSenderManager = new VideoSenderManager(new ConnectCheckerRtmp() {
         @Override

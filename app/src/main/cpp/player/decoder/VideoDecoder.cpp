@@ -12,6 +12,20 @@
 #include <android/bitmap.h>
 #include "libyuv.h"
 
+#include "macro.h"
+
+thread  *m_PushThread;
+
+SafeQueue<RTMPPacket *> packets;
+VideoChannel *videoChannel;
+int isStart;
+
+int readyPushing;
+uint32_t start_time;
+
+extern void initPush();
+extern void releasePush();
+
 void VideoDecoder::OnDecoderReady() {
     LOGCATE("VideoDecoder::OnDecoderReady");
     m_VideoWidth = GetCodecContext()->width;
@@ -46,6 +60,7 @@ void VideoDecoder::OnDecoderReady() {
         int32_t size = m_VideoWidth * m_VideoHeight * sizeof(uint8_t) * 3 >> 1;
         m_buffer = (uint8_t *) av_malloc(size);
 
+        initPush();
     } else {
         LOGCATE("VideoDecoder::OnDecoderReady m_VideoRender == null");
     }
@@ -53,6 +68,8 @@ void VideoDecoder::OnDecoderReady() {
 
 void VideoDecoder::OnDecoderDone() {
     LOGCATE("VideoDecoder::OnDecoderDone");
+
+    releasePush();
 
     if(m_MsgContext && m_MsgCallback)
         m_MsgCallback(m_MsgContext, MSG_DECODER_DONE, 0, nullptr);
@@ -107,7 +124,7 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
         LOGCATE("VideoDecoder::OnFrameAvailable 12 frame[w,h]=[%d, %d],format=%d,[line0,line1,line2]=[%d, %d, %d]", frame->width, frame->height, GetCodecContext()->pix_fmt, frame->linesize[0], frame->linesize[1],frame->linesize[2]);
 
         if (nullptr != m_MsgContext) {
-            LOGCATE("VideoDecoder::OnFrameAvailable 14--^^--");
+            //LOGCATE("VideoDecoder::OnFrameAvailable 14--^^--");
 
             /*if (nullptr == bitMap) {
                 bitMap = player->CreateBitmap(env, m_RenderWidth, m_RenderHeight);
@@ -136,7 +153,14 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
 
             //pthread_mutex_lock(&callback_mutex);
 
-            int32_t size = frame->width * frame->height * sizeof(uint8_t) * 3 >> 1;
+            if (videoChannel) {
+                LOGCATE("VideoDecoder::OnFrameAvailable 222");
+                videoChannel->encodeDataI420(frame->data[0], frame->linesize[0],
+                                             frame->data[1], frame->linesize[1],
+                                             frame->data[2], frame->linesize[2]);
+            }
+
+            /*int32_t size = frame->width * frame->height * sizeof(uint8_t) * 3 >> 1;
 
             LOGCATE("VideoDecoder::OnFrameAvailable eeee %d", size);
 
@@ -150,7 +174,15 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
             );
 
 
-            FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
+            if (videoChannel) {
+                LOGCATE("VideoDecoder::OnFrameAvailable 111");
+                videoChannel->encodeData((int8_t *)m_buffer);
+            }*/
+
+            //pthread_mutex_unlock(&callback_mutex);
+
+
+            /*FFMediaPlayer *player = static_cast<FFMediaPlayer *>(m_MsgContext);
             bool isAttach = false;
             JNIEnv *env = player->GetJNIEnv(&isAttach);
 
@@ -170,12 +202,9 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
             }
 
             if(m_MsgContext && m_MsgCallback)
-                m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, jByteArray);
+                m_MsgCallback(m_MsgContext, MSG_DECODER_BITMAP, 0, jByteArray);*/
 
             //env->DeleteLocalRef(jByteArray);
-
-            //pthread_mutex_unlock(&callback_mutex);
-
         }
 
         return;
@@ -249,3 +278,138 @@ void VideoDecoder::OnFrameAvailable(AVFrame *frame) {
     if(m_MsgContext && m_MsgCallback)
         m_MsgCallback(m_MsgContext, MSG_REQUEST_RENDER, 0, nullptr);
 }
+
+void releasePackets(RTMPPacket *&packet) {
+    if (packet) {
+        RTMPPacket_Free(packet);
+        delete packet;
+        packet = 0;
+    }
+}
+
+void callback(RTMPPacket *packet) {
+    if (packet) {
+        //设置时间戳
+        packet->m_nTimeStamp = RTMP_GetTime() - start_time;
+        packets.push(packet);
+    }
+}
+
+void setPushVideoEncInfo(int width, int height, int fps, int bitrate) {
+    if (videoChannel) {
+        videoChannel->setVideoEncInfo(width, height, fps, bitrate);
+    }
+}
+
+void start() {
+    char *url = (char *)"rtmp://10.180.90.38:1935/live/bbb";
+    RTMP *rtmp = 0;
+
+    LOGCATE("VideoDecoder::start url=>%s", url);
+
+    do {
+        rtmp = RTMP_Alloc();
+        if (!rtmp) {
+            LOGE("alloc rtmp失败");
+            break;
+        }
+        RTMP_Init(rtmp);
+        int ret = RTMP_SetupURL(rtmp, url);
+        if (!ret) {
+            LOGE("设置地址失败:%s", url);
+            break;
+        }
+        //5s超时时间
+        rtmp->Link.timeout = 5;
+        RTMP_EnableWrite(rtmp);
+        ret = RTMP_Connect(rtmp, 0);
+        if (!ret) {
+            LOGE("连接服务器:%s", url);
+            break;
+        }
+        ret = RTMP_ConnectStream(rtmp, 0);
+        if (!ret) {
+            LOGE("连接流:%s", url);
+            break;
+        }
+        //记录一个开始时间
+        start_time = RTMP_GetTime();
+        //表示可以开始推流了
+        readyPushing = 1;
+        packets.setWork(1);
+        //保证第一个数据是 aac解码数据包
+        //callback(audioChannel->getAudioTag());
+        RTMPPacket *packet = 0;
+        while (readyPushing) {
+            packets.pop(packet);
+            if (!readyPushing) {
+                break;
+            }
+            if (!packet) {
+                continue;
+            }
+            packet->m_nInfoField2 = rtmp->m_stream_id;
+            //发送rtmp包 1：队列
+            // 意外断网？发送失败，rtmpdump 内部会调用RTMP_Close
+            // RTMP_Close 又会调用 RTMP_SendPacket
+            // RTMP_SendPacket  又会调用 RTMP_Close
+            // 将rtmp.c 里面WriteN方法的 Rtmp_Close注释掉
+            ret = RTMP_SendPacket(rtmp, packet, 1);
+            releasePackets(packet);
+            if (!ret) {
+                LOGE("发送失败");
+                break;
+            }
+        }
+        releasePackets(packet);
+    } while (0);
+    //
+    isStart = 0;
+    readyPushing = 0;
+    packets.setWork(0);
+    packets.clear();
+    if (rtmp) {
+        RTMP_Close(rtmp);
+        RTMP_Free(rtmp);
+    }
+    delete (url);
+
+    LOGCATE("VideoDecoder::start ...>");
+}
+
+void initPush() {
+    LOGCATE("VideoDecoder::initPush <...");
+    videoChannel = new VideoChannel;
+    videoChannel->setVideoCallback(callback);
+    //准备一个队列,打包好的数据 放入队列，在线程中统一的取出数据再发送给服务器
+    packets.setReleaseCallback(releasePackets);
+
+    setPushVideoEncInfo(1920, 1080, 25, 2000 * 1024);
+
+    isStart = 0;
+    if (isStart) {
+        return;
+    }
+    isStart = 1;
+
+    m_PushThread = new thread(start);
+    LOGCATE("VideoDecoder::initPush ...>");
+}
+
+void releasePush() {
+    LOGCATE("VideoDecoder::releasePush <...");
+    readyPushing = 0;
+    //关闭队列工作
+    packets.setWork(0);
+    DELETE(videoChannel);
+
+    if(m_PushThread) {
+        m_PushThread->join();
+        delete m_PushThread;
+        m_PushThread = nullptr;
+    }
+
+    LOGCATE("VideoDecoder::releasePush ...>");
+}
+
+

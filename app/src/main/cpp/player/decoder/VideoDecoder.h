@@ -26,6 +26,10 @@ extern "C" {
 #include <jni.h>
 #include "DecoderBase.h"
 
+#include "safe_queue.h"
+#include "librtmp/rtmp.h"
+#include "VideoChannel.h"
+
 class VideoDecoder : public DecoderBase {
 
 public:

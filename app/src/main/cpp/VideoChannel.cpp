@@ -84,11 +84,72 @@ void VideoChannel::setVideoEncInfo(int width, int height, int fps, int bitrate) 
     videoCodec = x264_encoder_open(&param);
     pic_in = new x264_picture_t;
     x264_picture_alloc(pic_in, X264_CSP_I420, width, height);
+
+    //LOGE("VideoChannel::setVideoEncInfo  width=%d height=%d src_stride_y=%d src_stride_u=%d src_stride_v=%d", width, height, pic_in->img.i_stride[0], pic_in->img.i_stride[1], pic_in->img.i_stride[2]);
+
     pthread_mutex_unlock(&mutex);
 }
 
 void VideoChannel::setVideoCallback(VideoCallback videoCallback) {
     this->videoCallback = videoCallback;
+}
+
+void VideoChannel::encodeDataI420(const uint8_t* src_y,
+                                  int src_stride_y,
+                                  const uint8_t* src_u,
+                                  int src_stride_u,
+                                  const uint8_t* src_v,
+                                  int src_stride_v) {
+    pthread_mutex_lock(&mutex);
+
+    //y数据
+    memcpy(pic_in->img.plane[0], src_y, ySize);
+    memcpy(pic_in->img.plane[1], src_u, uvSize);
+    memcpy(pic_in->img.plane[2], src_v, uvSize);
+
+    //LOGE("VideoChannel::encodeDataI420  ySize=%d uvSize=%d src_stride_y=%d src_stride_u=%d src_stride_v=%d", ySize, uvSize, src_stride_y, src_stride_u, src_stride_v);
+
+    /*pic_in->img.i_csp = X264_CSP_I420;
+    pic_in->img.i_plane = 3;
+    pic_in->img.i_stride[0] = src_stride_y;
+    pic_in->img.i_stride[1] = src_stride_u;
+    pic_in->img.i_stride[2] = src_stride_v;*/
+
+
+    /*memcpy(pic_in->img.plane[0], data, ySize);
+    for (int i = 0; i < uvSize; ++i) {
+        //u数据
+        *(pic_in->img.plane[1] + i) = *(data + ySize + i * 2 + 1);
+        *(pic_in->img.plane[2] + i) = *(data + ySize + i * 2);
+    }*/
+
+
+    //编码出来的数据  （帧数据）
+    x264_nal_t *pp_nal;
+    //编码出来有几个数据 （多少帧）
+    int pi_nal;
+    x264_picture_t pic_out;
+    x264_encoder_encode(videoCodec, &pp_nal, &pi_nal, pic_in, &pic_out);
+    //如果是关键帧 3
+    int sps_len;
+    int pps_len;
+    uint8_t sps[100];
+    uint8_t pps[100];
+    for (int i = 0; i < pi_nal; ++i) {
+        if (pp_nal[i].i_type == NAL_SPS) {
+            //排除掉 h264的间隔 00 00 00 01
+            sps_len = pp_nal[i].i_payload - 4;
+            memcpy(sps, pp_nal[i].p_payload + 4, sps_len);
+        } else if (pp_nal[i].i_type == NAL_PPS) {
+            pps_len = pp_nal[i].i_payload - 4;
+            memcpy(pps, pp_nal[i].p_payload + 4, pps_len);
+            //pps肯定是跟着sps的
+            sendSpsPps(sps, pps, sps_len, pps_len);
+        } else {
+            sendFrame(pp_nal[i].i_type, pp_nal[i].p_payload, pp_nal[i].i_payload);
+        }
+    }
+    pthread_mutex_unlock(&mutex);
 }
 
 void VideoChannel::encodeData(int8_t *data) {

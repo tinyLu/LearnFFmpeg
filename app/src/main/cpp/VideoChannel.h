@@ -22,8 +22,14 @@ public:
 
     void encodeData(int8_t *data);
 
-    void setVideoCallback(VideoCallback videoCallback);
+    void encodeDataI420(const uint8_t* src_y,
+                        int src_stride_y,
+                        const uint8_t* src_u,
+                        int src_stride_u,
+                        const uint8_t* src_v,
+                        int src_stride_v);
 
+    void setVideoCallback(VideoCallback videoCallback);
 private:
     pthread_mutex_t mutex;
     int mWidth;
