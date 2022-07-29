@@ -1,7 +1,10 @@
 # Sets the minimum version of CMake required to build the native library.
 cmake_minimum_required(VERSION 3.4.1)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11")
+# 引入指定目录下的CMakeLists.txt
+add_subdirectory(${CMAKE_SOURCE_DIR}/librtmp)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=gnu++11 ")
 
 set(jnilibs ${CMAKE_SOURCE_DIR}/../jniLibs)
 set(libname learn-ffmpeg)
@@ -10,6 +13,8 @@ include_directories(
         include
         glm
         common
+        ${CMAKE_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/librtmp
         ${CMAKE_SOURCE_DIR}/recorder
         ${CMAKE_SOURCE_DIR}/util
         ${CMAKE_SOURCE_DIR}/player
@@ -23,6 +28,8 @@ link_directories(
 
 file(GLOB src-files
         ${CMAKE_SOURCE_DIR}/*.cpp
+        #${CMAKE_SOURCE_DIR}/AudioChannel.cpp
+        #${CMAKE_SOURCE_DIR}/VideoChannel.cpp
         ${CMAKE_SOURCE_DIR}/util/*.cpp
         ${CMAKE_SOURCE_DIR}/common/*.cpp
         ${CMAKE_SOURCE_DIR}/player/*.cpp
@@ -101,6 +108,7 @@ set(third-party-libs
         swscale
         avutil
         fdk-aac
+        faac
         x264
         )
 
@@ -124,4 +132,5 @@ target_link_libraries( # Specifies the target library.
                        ${log-lib}
                        ${third-party-libs}
                        ${native-libs}
+                       rtmp
                        )
