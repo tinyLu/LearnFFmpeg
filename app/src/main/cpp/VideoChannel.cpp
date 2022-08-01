@@ -238,7 +238,9 @@ void VideoChannel::sendSpsPps(uint8_t *sps, uint8_t *pps, int sps_len, int pps_l
     packet->m_hasAbsTimestamp = 0;
     packet->m_headerType = RTMP_PACKET_SIZE_MEDIUM;
 
-    videoCallback(packet);
+    if (videoCallback) {
+        videoCallback(packet);
+    }
 }
 
 void VideoChannel::sendFrame(int type, uint8_t *payload, int i_payload) {
@@ -280,5 +282,7 @@ void VideoChannel::sendFrame(int type, uint8_t *payload, int i_payload) {
     packet->m_packetType = RTMP_PACKET_TYPE_VIDEO;
     packet->m_nChannel = 0x10;
     packet->m_headerType = RTMP_PACKET_SIZE_LARGE;
-    videoCallback(packet);
+    if (videoCallback) {
+        videoCallback(packet);
+    }
 }

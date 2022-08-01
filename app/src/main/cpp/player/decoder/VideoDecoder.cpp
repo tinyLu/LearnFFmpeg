@@ -368,11 +368,12 @@ void start() {
     readyPushing = 0;
     packets.setWork(0);
     packets.clear();
+    LOGCATE("VideoDecoder::start a1");
     if (rtmp) {
         RTMP_Close(rtmp);
         RTMP_Free(rtmp);
     }
-    delete (url);
+    //delete (url);
 
     LOGCATE("VideoDecoder::start ...>");
 }
@@ -401,13 +402,17 @@ void releasePush() {
     readyPushing = 0;
     //关闭队列工作
     packets.setWork(0);
+
+    //videoChannel->setVideoCallback(nullptr);
+    //packets.setReleaseCallback(nullptr);
+
     DELETE(videoChannel);
 
-    if(m_PushThread) {
+    /*if(m_PushThread) {
         m_PushThread->join();
         delete m_PushThread;
         m_PushThread = nullptr;
-    }
+    }*/
 
     LOGCATE("VideoDecoder::releasePush ...>");
 }

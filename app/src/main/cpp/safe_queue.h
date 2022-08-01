@@ -58,7 +58,9 @@ public:
             q.push(new_value);
             pthread_cond_signal(&cond);
         }else{
-            releaseCallback(new_value);
+            if (releaseCallback) {
+                releaseCallback(new_value);
+            }
         }
         pthread_mutex_unlock(&mutex);
 #endif
@@ -129,7 +131,9 @@ public:
         int size = q.size();
         for (int i = 0; i < size; ++i) {
             T value = q.front();
-            releaseCallback(value);
+            if (releaseCallback) {
+                releaseCallback(value);
+            }
             q.pop();
         }
         pthread_mutex_unlock(&mutex);
@@ -171,7 +175,7 @@ private:
     queue<T> q;
     //是否工作的标记 1 ：工作 0：不接受数据 不工作
     int work;
-    ReleaseCallback releaseCallback;
+    ReleaseCallback releaseCallback = nullptr;
     SyncHandle syncHandle;
 };
 

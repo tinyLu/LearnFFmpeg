@@ -1536,7 +1536,12 @@ WriteN(RTMP *r, const char *buffer, int n)
 	  if (sockerr == EINTR && !RTMP_ctrlC)
 	    continue;
 
-	  RTMP_Close(r);
+        //发送rtmp包 1：队列
+        // 意外断网？发送失败，rtmpdump 内部会调用RTMP_Close
+        // RTMP_Close 又会调用 RTMP_SendPacket
+        // RTMP_SendPacket  又会调用 RTMP_Close
+        // 将rtmp.c 里面WriteN方法的 Rtmp_Close注释掉
+	  //RTMP_Close(r);
 	  n = 1;
 	  break;
 	}
